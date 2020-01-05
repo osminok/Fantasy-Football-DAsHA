@@ -1,0 +1,168 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep  5 15:27:21 2018
+
+@author: Paul Connell
+"""
+
+import numpy as np
+import pandas as pd
+df = pd.read_excel('FFL_Draft_Rankings_2018.xlsx')
+df['Player'] = df['Player'].astype('str')
+# This list takes out the drafted players - up here becuase I didn't want it getting written over in the next field when you iterate over rounds
+drafted = []
+
+#This is the function that will run the analysis
+def MPTS_predict(pos_df, POS):
+    #pos_df is defined above; POS should be a string of the position (e.g., 'QB')
+   
+    #to get the index number of the next POS and generate marginal points prediction
+    pos_df.loc[:,'next'] = 0
+    pos_df.loc[:,'MPTS'] = 0
+   
+#    for i in range(0,600):
+#        try:
+#            k = 1
+#            if pos_df.loc[i, 'POS'] == str(POS):
+#                while pos_df.loc[i,'next'] == 0:
+#                    if pos_df.loc[i+k, 'POS'] == str(POS):
+#                        temp_dist = pos_df.loc[i+k,'Yahoo Rank'] - pos_df.loc[i,'Yahoo Rank']
+#                        if temp_dist >= int(steps):
+#                            pos_df.loc[i,'next'] = pos_df.loc[i+k,'Yahoo Rank'] - pos_df.loc[i,'Yahoo Rank']
+#                            pos_df.loc[i,'MPTS'] = pos_df.loc[i,'FPTS'] - pos_df.loc[i+k,'FPTS']
+#                    else:
+#                        k +=1
+#        except:
+#            pos_df.loc[i,'next'] = 1
+#            pos_df.loc[i,'MPTS'] = 0
+
+    # To add head player at POS to prediction window
+    for i in range(0,600):
+        try:
+            if pos_df.loc[i, 'POS'] == str(POS):
+                pos_temp_sum = pos_df.loc[i,['Player','POS','MPTS']]
+                if str(POS) == 'QB':                    
+                    global qb_sum
+                    qb_sum = pos_temp_sum
+                elif str(POS) == 'RB':
+                    global rb_sum
+                    rb_sum = pos_temp_sum
+                elif str(POS) == 'WR':
+                    global wr_sum
+                    wr_sum = pos_temp_sum
+                elif str(POS) == 'TE':
+                    global te_sum
+                    te_sum = pos_temp_sum
+                elif str(POS) == 'K':
+                    global k_sum
+                    k_sum = pos_temp_sum
+                elif str(POS) == 'DEF':
+                    global def_sum
+                    def_sum = pos_temp_sum
+                #return pos_temp_sum
+                break
+        except:
+            print('No '+str(POS)+'s found')
+       
+
+#This is the user interface - hit refresh to run again for next pick; the list of drafted players should compile over time
+#Code to remove drafted players
+your_turn = 'No'
+while your_turn == 'No':
+    new_draft = input('Who was the last pick?')
+    drafted.append(str(new_draft))
+    your_turn = input('Is it your turn?')
+    if your_turn == 'no':
+        your_turn = 'No'
+    elif your_turn == 'n':
+        your_turn = 'No'
+    elif your_turn == 'No.':
+        your_turn = 'No'
+
+#Remove drafted players
+for i in range(0,len(drafted)):
+    try:
+        df = df[df['Player'] != drafted[i]]
+    except:
+        print('Error on player '+str(drafted[i]))
+
+#reset index for later parsing (not sure if I need this)
+df = df.reset_index()
+del df['index']
+
+steps = int(input('How many turns until your next pick?'))
+
+#Create dataframes for each position as well as 'pos_sum' variables to be used in final output
+qb_temp_df = df.loc[df['POS'] == 'QB']
+qb_df = qb_temp_df.loc[:, :]
+qb_sum = ['Player','POS','MPTS']
+
+rb_temp_df = df.loc[df['POS'] == 'RB']
+rb_df = rb_temp_df.loc[:, :]
+rb_sum = ['Player','POS','MPTS']
+
+wr_temp_df = df.loc[df['POS'] == 'WR']
+wr_df = wr_temp_df.loc[:, :]
+wr_sum = ['Player','POS','MPTS']
+
+te_temp_df = df.loc[df['POS'] == 'TE']
+te_df = te_temp_df.loc[:, :]
+te_sum = ['Player','POS','MPTS']
+
+k_temp_df = df.loc[df['POS'] == 'K']
+k_df = k_temp_df.loc[:, :]
+k_sum = ['Player','POS','MPTS']
+
+def_temp_df = df.loc[df['POS'] == 'DEF']
+def_df = def_temp_df.loc[:, :]
+def_sum = ['Player','POS','MPTS']
+
+#Run the analysis
+MPTS_predict(qb_df, 'QB')
+MPTS_predict(rb_df, 'RB')
+MPTS_predict(wr_df, 'WR')
+MPTS_predict(te_df, 'TE')
+MPTS_predict(k_df, 'K')
+MPTS_predict(def_df, 'DEF')
+
+#Generate output
+print(drafted)
+frames = [qb_sum, wr_sum, rb_sum, te_sum, def_sum, k_sum]
+pd.concat(frames)
+print(frames)
+#Goal for next year - make the format of the output pretty to look at
+
+#Use this for knocked out code in function above
+
+
+
+i=0
+while i < 600:
+    try:
+        k = 1
+        base = 0
+        if rb_df.loc[i, 'POS'] == 'RB':
+            while base == 0:
+                j = i+k
+                if rb_df.loc[j, 'POS'] == 'RB':
+                    temp_dist = rb_df.loc[j,'Yahoo Rank'] - rb_df.loc[i,'Yahoo Rank']
+                    if temp_dist >= int(steps):
+                        base += 1
+                        rb_df.loc[i,'MPTS'] = rb_df.loc[i,'FPTS'] - rb_df.loc[j,'FPTS']
+                        i+=1
+                    k +=1
+                else:
+                    k +=1
+        else:
+            i += 1
+    except:
+        rb_df.loc[i,'next'] = 1
+        rb_df.loc[i,'MPTS'] = 0
+        i +=1
+        print('error on i = '+str(i))
+
+i=0
+while i < 600:
+    try:
+        k = 1
+      
